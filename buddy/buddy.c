@@ -1,15 +1,15 @@
 #include "buddy.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <sys/mman.h>
 
 #define TOTAL_MEMORY_PAGES 8192
 #define PAGE_SIZE 4096
-#define TOTAL_MEMORY_BYTES (TOTAL_MEMORY_PAGES * PAGE_SIZE) // 16MB
+#define TOTAL_MEMORY_BYTES (TOTAL_MEMORY_PAGES * PAGE_SIZE) // 32MB
 
 #define MIN_ORDER 12 // Smallest block is one page: 2^12 = 4096 bytes
-#define MAX_ORDER 24 // Largest block is all memory: 2^24 = 16MB
+#define MAX_ORDER 25 // Largest block is all memory: 2^25 = 32MB
 
 // A node in a free list.
 typedef struct block {
@@ -18,8 +18,8 @@ typedef struct block {
 
 // A structure to hold metadata for each page.
 typedef struct {
-    unsigned char order;    // The order of the block this page belongs to.
-    unsigned char is_free;  // Flag to indicate if the block is free.
+    unsigned char order;   // The order of the block this page belongs to.
+    unsigned char is_free; // Flag to indicate if the block is free.
 } page_meta_t;
 
 // The start of our simulated memory.
@@ -33,7 +33,8 @@ static page_meta_t page_metadata[TOTAL_MEMORY_PAGES];
 
 // Helper to get the base 2 logarithm, rounding up.
 static int ceil_log2(unsigned int n) {
-    if (n <= 1) return 0;
+    if (n <= 1)
+        return 0;
     int power = 0;
     unsigned int temp = 1;
     while (temp < n) {
@@ -65,7 +66,8 @@ static int find_buddy_index(int index, int order) {
 
 void buddy_init(void) {
     // Use mmap to get a large chunk of memory.
-    memory_start = mmap(NULL, TOTAL_MEMORY_BYTES, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    memory_start = mmap(NULL, TOTAL_MEMORY_BYTES, PROT_READ | PROT_WRITE,
+                                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (memory_start == MAP_FAILED) {
         perror("mmap failed");
         exit(EXIT_FAILURE);
@@ -80,16 +82,18 @@ void buddy_init(void) {
     block_t *initial_block = (block_t *)memory_start;
     initial_block->next = NULL;
     free_lists[MAX_ORDER] = initial_block;
-    
+
     // Initialize metadata for the first page of the big block.
     page_metadata[0].order = MAX_ORDER;
     page_metadata[0].is_free = 1;
 
-    printf("Buddy system initialized with %d bytes of memory.\n", TOTAL_MEMORY_BYTES);
+    printf("Buddy system initialized with %d bytes of memory.\n",
+                TOTAL_MEMORY_BYTES);
 }
 
 void *buddy_alloc(size_t size) {
-    if (size == 0) return NULL;
+    if (size == 0)
+        return NULL;
 
     // Calculate the required order for the requested size.
     int order = ceil_log2(size);
@@ -125,10 +129,10 @@ void *buddy_alloc(size_t size) {
     while (current_order > order) {
         current_order--;
         int buddy_page_index = find_buddy_index(page_index, current_order);
-        
+
         // Mark the primary block's new, smaller order.
         page_metadata[page_index].order = current_order;
-        
+
         // Mark the new buddy block and add it to the free list.
         page_metadata[buddy_page_index].order = current_order;
         page_metadata[buddy_page_index].is_free = 1;
@@ -137,12 +141,13 @@ void *buddy_alloc(size_t size) {
         buddy_block->next = free_lists[current_order];
         free_lists[current_order] = buddy_block;
     }
-    
+
     return (void *)block;
 }
 
 void buddy_free(void *ptr) {
-    if (ptr == NULL) return;
+    if (ptr == NULL)
+        return;
 
     int page_index = ptr_to_page_index(ptr);
     if (page_index < 0 || page_index >= TOTAL_MEMORY_PAGES) {
@@ -163,7 +168,8 @@ void buddy_free(void *ptr) {
         int buddy_index = find_buddy_index(page_index, current_order);
 
         // Check if buddy is free and of the same order.
-        if (!page_metadata[buddy_index].is_free || page_metadata[buddy_index].order != current_order) {
+        if (!page_metadata[buddy_index].is_free ||
+                page_metadata[buddy_index].order != current_order) {
             break; // Buddy is not available for merging.
         }
 
