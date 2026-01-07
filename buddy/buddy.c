@@ -91,7 +91,43 @@ void buddy_init(void) {
                 TOTAL_MEMORY_BYTES);
 }
 
-void *buddy_alloc(size_t size) {
+// Find the smallest available order that can fit the requested size.
+int find_smallest_available_order(int order) {
+    static int invalid_order = MAX_ORDER + 1;
+    int current_order = invalid_order;
+    
+    for (int i = order; i <= MAX_ORDER; i++) {
+        if (free_lists[i] != NULL) {
+            current_order = i;
+            break;
+        }
+    }
+    return current_order;
+}
+
+// Take a block from the free list.
+struct block * take_block(int current_order) {
+    block_t *block = free_lists[current_order];
+    free_lists[current_order] = block->next;
+    page_metadata[ptr_to_page_index(block)].is_free = 0;
+    
+    return block;
+}
+
+// Split a block into two smaller blocks.
+void split_block(int page_index, int current_order) {
+    int buddy_page_index = find_buddy_index(page_index, current_order);
+    page_metadata[page_index].order = current_order;
+
+    // Mark the new buddy block and add it to the free list.
+    page_metadata[buddy_page_index].order = current_order;
+    page_metadata[buddy_page_index].is_free = 1;
+    block_t *buddy_block = (block_t *)page_index_to_ptr(buddy_page_index);
+    buddy_block->next = free_lists[current_order];
+    free_lists[current_order] = buddy_block;
+}
+
+void * buddy_alloc(size_t size) {
     if (size == 0)
         return NULL;
 
@@ -106,13 +142,8 @@ void *buddy_alloc(size_t size) {
         return NULL;
     }
 
-    // Find the smallest available block that fits.
-    int current_order;
-    for (current_order = order; current_order <= MAX_ORDER; current_order++) {
-        if (free_lists[current_order] != NULL) {
-            break;
-        }
-    }
+    // Find the smallest available order that fits.
+    int current_order = find_smallest_available_order(order);
 
     if (current_order > MAX_ORDER) {
         fprintf(stderr, "Error: Not enough memory of size %zu.\n", size);
@@ -120,26 +151,13 @@ void *buddy_alloc(size_t size) {
     }
 
     // Take the block from the found free list.
-    block_t *block = free_lists[current_order];
-    free_lists[current_order] = block->next;
+    block_t * block = take_block(current_order);
     int page_index = ptr_to_page_index(block);
-    page_metadata[page_index].is_free = 0;
 
     // Split the block until it's the correct size.
     while (current_order > order) {
         current_order--;
-        int buddy_page_index = find_buddy_index(page_index, current_order);
-
-        // Mark the primary block's new, smaller order.
-        page_metadata[page_index].order = current_order;
-
-        // Mark the new buddy block and add it to the free list.
-        page_metadata[buddy_page_index].order = current_order;
-        page_metadata[buddy_page_index].is_free = 1;
-
-        block_t *buddy_block = (block_t *)page_index_to_ptr(buddy_page_index);
-        buddy_block->next = free_lists[current_order];
-        free_lists[current_order] = buddy_block;
+        split_block(page_index, current_order);
     }
 
     return (void *)block;
