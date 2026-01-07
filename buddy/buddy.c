@@ -67,7 +67,7 @@ static int find_buddy_index(int index, int order) {
 void buddy_init(void) {
     // Use mmap to get a large chunk of memory.
     memory_start = mmap(NULL, TOTAL_MEMORY_BYTES, PROT_READ | PROT_WRITE,
-                                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (memory_start == MAP_FAILED) {
         perror("mmap failed");
         exit(EXIT_FAILURE);
@@ -88,14 +88,14 @@ void buddy_init(void) {
     page_metadata[0].is_free = 1;
 
     printf("Buddy system initialized with %d bytes of memory.\n",
-                TOTAL_MEMORY_BYTES);
+           TOTAL_MEMORY_BYTES);
 }
 
 // Find the smallest available order that can fit the requested size.
 int find_smallest_available_order(int order) {
     static int invalid_order = MAX_ORDER + 1;
     int current_order = invalid_order;
-    
+
     for (int i = order; i <= MAX_ORDER; i++) {
         if (free_lists[i] != NULL) {
             current_order = i;
@@ -106,11 +106,11 @@ int find_smallest_available_order(int order) {
 }
 
 // Take a block from the free list.
-struct block * take_block(int current_order) {
+struct block *take_block(int current_order) {
     block_t *block = free_lists[current_order];
     free_lists[current_order] = block->next;
     page_metadata[ptr_to_page_index(block)].is_free = 0;
-    
+
     return block;
 }
 
@@ -127,7 +127,7 @@ void split_block(int page_index, int current_order) {
     free_lists[current_order] = buddy_block;
 }
 
-void * buddy_alloc(size_t size) {
+void *buddy_alloc(size_t size) {
     if (size == 0)
         return NULL;
 
@@ -151,7 +151,7 @@ void * buddy_alloc(size_t size) {
     }
 
     // Take the block from the found free list.
-    block_t * block = take_block(current_order);
+    block_t *block = take_block(current_order);
     int page_index = ptr_to_page_index(block);
 
     // Split the block until it's the correct size.
@@ -187,7 +187,7 @@ void buddy_free(void *ptr) {
 
         // Check if buddy is free and of the same order.
         if (!page_metadata[buddy_index].is_free ||
-                page_metadata[buddy_index].order != current_order) {
+            page_metadata[buddy_index].order != current_order) {
             break; // Buddy is not available for merging.
         }
 

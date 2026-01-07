@@ -43,7 +43,7 @@ int main() {
     // --- Edge Case: Allocate a very large block ---
     printf("Attempting to allocate a large block of 8MB...\n");
     void *large_block =
-            buddy_alloc(8 * 1024 * 1024); // Needs 8MB block (order 23)
+        buddy_alloc(8 * 1024 * 1024); // Needs 8MB block (order 23)
     buddy_dump();
 
     printf("Freeing the large block...\n");

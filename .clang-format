@@ -1,0 +1,9 @@
+---
+BasedOnStyle: LLVM
+IndentWidth: 4
+UseTab: Never
+TabWidth: 4
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+ColumnLimit: 0
+ContinuationIndentWidth: 4
